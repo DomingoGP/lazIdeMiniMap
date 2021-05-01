@@ -288,7 +288,7 @@ procedure TlazIdeMiniMap.seFontSizeChange(Sender: TObject);
 begin
   edMiniMap.Font.Size := seFontSize.Value;
   edMiniMap.Invalidate;
-  //CenterMiniMap;
+  CenterMiniMap;
 end;
 
 procedure TlazIdeMiniMap.AfterScroll(Sender: TObject; EventType: TSynScrollEvent; dx, dy: integer;
