@@ -164,7 +164,9 @@ begin
   btnSave.LoadGlyphFromStock(idButtonSave);
   if btnSave.Glyph.Empty then
     IDEImages.AssignImage(btnSave, 'laz_save');
+  SourceEditorManagerIntf.GetEditorControlSettings(edMiniMap);
   edMiniMap.ReadOnly := True;
+  edMiniMap.Gutter.Visible := False;
   edMiniMap.OnClick := @edMiniMapClick;
   edMiniMap.OnSpecialLineMarkup := @edMiniMapSpecialLineMarkup;
   //edMiniMap.OnSpecialLineColors:=@edMiniMapSpecialLineColors;
@@ -222,6 +224,7 @@ begin
   edMiniMap.Highlighter := aOriginEditor.Highlighter;
   edMiniMap.RightEdge := aOriginEditor.RightEdge;
   edMiniMap.RightEdgeColor := aOriginEditor.RightEdgeColor;
+  edMiniMap.Color:=aOriginEditor.Color;
   CenterMiniMap;
 end;
 

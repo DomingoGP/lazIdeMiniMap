@@ -9,7 +9,6 @@ object lazIdeMiniMap: TlazIdeMiniMap
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  LCLVersion = '2.1.0.0'
   object seFontSize: TSpinEdit
     Left = 31
     Height = 23
