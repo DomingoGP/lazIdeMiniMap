@@ -9,6 +9,7 @@ object lazIdeMiniMap: TlazIdeMiniMap
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  LCLVersion = '2.1.0.0'
   object seFontSize: TSpinEdit
     Left = 31
     Height = 23
@@ -39,7 +40,7 @@ object lazIdeMiniMap: TlazIdeMiniMap
     OnColorChanged = btnColorColorChanged
   end
   object btnSave: TBitBtn
-    Left = 129
+    Left = 104
     Height = 30
     Top = 1
     Width = 28
@@ -544,15 +545,5 @@ object lazIdeMiniMap: TlazIdeMiniMap
         MouseActionsCollapsed = <>
       end
     end
-  end
-  object btnFGColor: TColorButton
-    Left = 102
-    Height = 25
-    Top = 4
-    Width = 25
-    BorderWidth = 2
-    ButtonColorSize = 16
-    ButtonColor = clBlack
-    OnColorChanged = btnColorColorChanged
   end
 end

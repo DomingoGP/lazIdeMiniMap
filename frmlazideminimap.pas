@@ -34,7 +34,6 @@ type
   { TlazIdeMiniMap }
 
   TlazIdeMiniMap = class(TForm)
-    btnFGColor: TColorButton;
     btnSave: TBitBtn;
     btnColor: TColorButton;
     lbFontSize: TLabel;
@@ -43,8 +42,6 @@ type
     procedure btnSaveClick(Sender: TObject);
     procedure edMiniMapSpecialLineMarkup(Sender: TObject; Line: integer;
       var Special: boolean; Markup: TSynSelectedColor);
-    //procedure edMiniMapSpecialLineColors(Sender: TObject; Line: integer;
-    //  var Special: boolean; var FG, BG: TColor);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -57,6 +54,7 @@ type
     { private declarations }
     FSourceEditor: TSourceEditorInterface;
     FSourceSynEdit: TCustomSynEdit;
+    FColor:TColor;
     procedure AfterScroll(Sender: TObject; EventType: TSynScrollEvent; dx, dy: integer;
       const rcScroll, rcClip: TRect);
     procedure CenterMiniMap;
@@ -161,6 +159,7 @@ end;
 procedure TlazIdeMiniMap.FormCreate(Sender: TObject);
 begin
   LoadSettings;
+  FColor:=btnColor.ButtonColor;
   btnSave.LoadGlyphFromStock(idButtonSave);
   if btnSave.Glyph.Empty then
     IDEImages.AssignImage(btnSave, 'laz_save');
@@ -169,7 +168,6 @@ begin
   edMiniMap.Gutter.Visible := False;
   edMiniMap.OnClick := @edMiniMapClick;
   edMiniMap.OnSpecialLineMarkup := @edMiniMapSpecialLineMarkup;
-  //edMiniMap.OnSpecialLineColors:=@edMiniMapSpecialLineColors;
   edMiniMap.Gutter.Parts[4].Visible := False; // code folding disabled.
   FSourceSynEdit := nil;
   FSourceEditor := SourceEditorManagerIntf.ActiveEditor;
@@ -184,21 +182,6 @@ procedure TlazIdeMiniMap.FormDestroy(Sender: TObject);
 begin
 end;
 
-{ //deprecated.
-procedure TlazIdeMiniMap.edMiniMapSpecialLineColors(Sender: TObject; Line: integer;
-  var Special: boolean; var FG, BG: TColor);
-begin
-  if edOrigin = nil then
-    Exit;
-  if (Line>=edOrigin.TopLine) and (Line<=edOrigin.TopLine + edOrigin.LinesInWindow) then
-  begin
-    Special:=true;
-    BG:=btnColor.ButtonColor;
-    FG:=btnFGColor.ButtonColor;
-  end;
-end;
-}
-
 procedure TlazIdeMiniMap.edMiniMapSpecialLineMarkup(Sender: TObject;
   Line: integer; var Special: boolean; Markup: TSynSelectedColor);
 begin
@@ -207,8 +190,8 @@ begin
   if (Line >= FSourceSynEdit.TopLine) and (Line <= FSourceSynEdit.TopLine + FSourceSynEdit.LinesInWindow) then
   begin
     Special := True;
-    Markup.Background:=btnColor.ButtonColor;
-    Markup.Foreground:=btnFGColor.ButtonColor;
+    Markup.Background :=  FColor;
+    Markup.Foreground := clNone;
   end;
 end;
 
@@ -258,6 +241,7 @@ end;
 
 procedure TlazIdeMiniMap.btnColorColorChanged(Sender: TObject);
 begin
+  FColor:=btnColor.ButtonColor;
   edMiniMap.Invalidate;
 end;
 
@@ -335,7 +319,6 @@ begin
       // This way the xml is kept short and defaults may change in future.
       Config.SetDeleteValue('FontSize', seFontSize.Value, 3);
       Config.SetDeleteValue('Color', btnColor.ButtonColor, $00fffbff);
-      Config.SetDeleteValue('ColorFG', btnFGColor.ButtonColor, clBlack);
     finally
       Config.Free;
     end;
@@ -359,7 +342,6 @@ begin
       Version := Config.GetValue('Version', 1);
       seFontSize.Value := Config.GetValue('FontSize', 3);
       btnColor.ButtonColor := Config.GetValue('Color', $00bffbff);
-      btnFGColor.ButtonColor := Config.GetValue('ColorFG', clBlack);
     finally
       Config.Free;
     end;
