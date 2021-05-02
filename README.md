@@ -9,6 +9,6 @@ Homepage: [www.github.com/DomingoGP/lazIdeMiniMap](https://github.com/DomingoGP/
 
 screenshoots
 
-![screenshoot1 docked](screenshoots/scs1.png)
+![screenshoot1 docked](https://github.com/DomingoGP/lazIdeMiniMap/blob/master/screenshots/scs1.png)
 
-![screenshoot2 undocked](screenshoots/scs2.png)
+![screenshoot2 undocked](https://github.com/DomingoGP/lazIdeMiniMap/blob/master/screenshots/scs2.png)
