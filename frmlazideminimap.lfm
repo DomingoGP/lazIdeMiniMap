@@ -8,8 +8,6 @@ object lazIdeMiniMap: TlazIdeMiniMap
   ClientWidth = 320
   OnClose = FormClose
   OnCreate = FormCreate
-  OnDestroy = FormDestroy
-  LCLVersion = '2.1.0.0'
   object seFontSize: TSpinEdit
     Left = 31
     Height = 23
@@ -545,5 +543,11 @@ object lazIdeMiniMap: TlazIdeMiniMap
         MouseActionsCollapsed = <>
       end
     end
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 50
+    OnTimer = Timer1Timer
+    Left = 264
   end
 end

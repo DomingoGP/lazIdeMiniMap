@@ -26,8 +26,9 @@ interface
 
 uses
   Classes, SysUtils, LazLoggerBase, FileUtil, Forms, Controls, Graphics,
-  Dialogs, LCLType, Spin, StdCtrls, Buttons, IDECommands, IDEWindowIntf,
-  LazIDEIntf, SrcEditorIntf, MenuIntf, SynEdit, SynEditMarkupSpecialLine, SynEditTypes, SynEditMiscClasses;
+  Dialogs, LCLType, Spin, StdCtrls, Buttons, ExtCtrls, IDECommands,
+  IDEWindowIntf, LazIDEIntf, SrcEditorIntf, MenuIntf, SynEdit,
+  SynEditMarkupSpecialLine, SynEditTypes, SynEditMiscClasses;
 
 type
 
@@ -39,25 +40,26 @@ type
     lbFontSize: TLabel;
     seFontSize: TSpinEdit;
     edMiniMap: TSynEdit;
+    Timer1: TTimer;
     procedure btnSaveClick(Sender: TObject);
     procedure edMiniMapSpecialLineMarkup(Sender: TObject; Line: integer;
       var Special: boolean; Markup: TSynSelectedColor);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
     procedure edMiniMapClick(Sender: TObject);
     procedure seFontSizeChange(Sender: TObject);
     procedure btnColorColorChanged(Sender: TObject);
     procedure ActiveEditorChanged(Sender: TObject);
     procedure OnEditorDestroy(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
   private
     { private declarations }
     FSourceEditor: TSourceEditorInterface;
     FSourceSynEdit: TCustomSynEdit;
     FColor:TColor;
-    procedure AfterScroll(Sender: TObject; EventType: TSynScrollEvent; dx, dy: integer;
-      const rcScroll, rcClip: TRect);
+    procedure EditorStateChanged(Sender: TObject; Changes: TSynStatusChanges);
     procedure CenterMiniMap;
+    procedure OnChangedEditorAsync(Data:PtrInt);
     procedure SetUpMiniMap(aOriginEditor: TCustomSynEdit);
     procedure ResetMiniMap;
     procedure LoadSettings;
@@ -85,6 +87,9 @@ uses
 resourcestring
   SMiniMapMenuCaption = 'MiniMap';
 
+const
+  FORM_NAME='lazIdeMiniMap1';
+
 procedure ShowlazIdeMiniMap1(Sender: TObject);
 begin
   IDEWindowCreators.ShowForm(lazIdeMiniMap1Creator.FormName, True);
@@ -94,7 +99,7 @@ procedure CreatelazIdeMiniMap1(Sender: TObject; aFormName: string; var AForm: TC
   DoDisableAutoSizing: boolean);
 begin
   // sanity check to avoid clashing with another package that has registered a window with the same name
-  if CompareText(aFormName, 'lazIdeMiniMap') <> 0 then
+  if CompareText(aFormName, FORM_NAME) <> 0 then
   begin
     DebugLn(['ERROR: CreatelazIdeMiniMap: there is already a form with this ' + 'name']);
     exit;
@@ -124,7 +129,7 @@ begin
     'ViewlazIdeMiniMap1',
     MenuItemCaption, nil, nil, ViewlazIdeMiniMap1Command);
   // register dockable Window
-  lazIdeMiniMap1Creator := IDEWindowCreators.Add('lazIdeMiniMap', @CreatelazIdeMiniMap1,
+  lazIdeMiniMap1Creator := IDEWindowCreators.Add(FORM_NAME, @CreatelazIdeMiniMap1,
     nil, '100', '100', '420', '620'  // default place at left=100, top=100, right=300, bottom=300
     // you can also define percentage values of screen or relative positions, see wiki
     );
@@ -146,8 +151,6 @@ begin
   SourceEditorManagerIntf.UnRegisterChangeEvent(semEditorActivate, @ActiveEditorChanged);
   SourceEditorManagerIntf.UnRegisterChangeEvent(semEditorDestroy, @OnEditorDestroy);
   ResetMiniMap;
-  //FSourceSynEdit := nil;
-  //FSourceEditor := nil;
   CloseAction := caFree;
 end;
 
@@ -169,17 +172,14 @@ begin
   edMiniMap.OnClick := @edMiniMapClick;
   edMiniMap.OnSpecialLineMarkup := @edMiniMapSpecialLineMarkup;
   edMiniMap.Gutter.Parts[4].Visible := False; // code folding disabled.
+  SourceEditorManagerIntf.RegisterChangeEvent(semEditorActivate, @ActiveEditorChanged);
+  SourceEditorManagerIntf.RegisterChangeEvent(semEditorDestroy, @OnEditorDestroy);
+
   FSourceSynEdit := nil;
   FSourceEditor := SourceEditorManagerIntf.ActiveEditor;
   if FSourceEditor <> nil then
     FSourceSynEdit := TCustomSynEdit(FSourceEditor.EditorControl);
   SetUpMiniMap(FSourceSynEdit);
-  SourceEditorManagerIntf.RegisterChangeEvent(semEditorActivate, @ActiveEditorChanged);
-  SourceEditorManagerIntf.RegisterChangeEvent(semEditorDestroy, @OnEditorDestroy);
-end;
-
-procedure TlazIdeMiniMap.FormDestroy(Sender: TObject);
-begin
 end;
 
 procedure TlazIdeMiniMap.edMiniMapSpecialLineMarkup(Sender: TObject;
@@ -203,11 +203,11 @@ begin
   edMiniMap.Font.Size := seFontSize.Value;
   //edMiniMap.ShareOptions:= [eosShareMarks];
   edMiniMap.ShareTextBufferFrom(aOriginEditor);
-  aOriginEditor.RegisterScrollEventHandler(@AfterScroll, [peAfterScroll]);
   edMiniMap.Highlighter := aOriginEditor.Highlighter;
   edMiniMap.RightEdge := aOriginEditor.RightEdge;
   edMiniMap.RightEdgeColor := aOriginEditor.RightEdgeColor;
   edMiniMap.Color:=aOriginEditor.Color;
+  aOriginEditor.RegisterStatusChangedHandler(@EditorStateChanged,[scTopLine, scLinesInWindow]);
   CenterMiniMap;
 end;
 
@@ -222,13 +222,18 @@ begin
     begin
       if SourceEditorManagerIntf.SourceEditors[wI].EditorControl = FSourceSynEdit then
       begin
-        FSourceSynEdit.UnRegisterScrollEventHandler(@AfterScroll);
+        FSourceSynEdit.UnRegisterStatusChangedHandler(@EditorStateChanged);
         break;
       end;
     end;
   end;
+  edMiniMap.CaretY:=1;
+  edMiniMap.CaretX:=1;
+  edMIniMap.TopLine:=1;
   edMiniMap.UnShareTextBuffer;
   edMiniMap.Lines.Add('');  //HACK: WORKARROUD BUG IN SHARETEXTBUFFER.
+  FSourceSynEdit := nil;
+  FSourceEditor := nil;
 end;
 
 procedure TlazIdeMiniMap.edMiniMapClick(Sender: TObject);
@@ -247,22 +252,39 @@ end;
 
 procedure TlazIdeMiniMap.ActiveEditorChanged(Sender: TObject);
 begin
-  // this function is called more than one time when change the tab.
-  //ShowMessage('Changed  Sender:'+ IntToHex(Cardinal(Sender),8)+' FSourceEditor: '+IntToHex(Cardinal(FSourceEditor),8)+'Active: '+IntTOHex(Cardinal(SourceEditorManagerIntf.ActiveEditor),8));
   if TSourceEditorInterface(Sender) = FSourceEditor then
     Exit;
+  //solves problems with unfinished messages in synedit.
+  Application.QueueAsyncCall(@OnChangedEditorAsync,0);
+end;
+
+procedure TLazIdeMiniMap.OnChangedEditorAsync(Data:PtrInt);
+begin
+  if TSourceEditorInterface(SourceEditorManagerIntf.ActiveEditor) = FSourceEditor then
+    Exit;
   ResetMiniMap;
+  Timer1.Enabled:=true;
+  //setup continues in Timer1Timer.
+end;
+
+procedure TlazIdeMiniMap.Timer1Timer(Sender: TObject);
+begin
+  Timer1.Enabled:=false;
   FSourceSynEdit := nil;
-  FSourceEditor := TSourceEditorInterface(Sender);
+  FSourceEditor := TSourceEditorInterface(SourceEditorManagerIntf.ActiveEditor);
   if FSourceEditor = nil then
     Exit;
   FSourceSynEdit := TCustomSynEdit(FSourceEditor.EditorControl);
+  if FSourceSynEdit = nil then
+  begin
+    FSourceEditor:=nil;
+    Exit;
+  end;
   SetUpMiniMap(FSourceSynEdit);
 end;
 
 procedure TlazIdeMiniMap.OnEditorDestroy(Sender: TObject);
 begin
-  //ShowMessage('Destroy');
   if TSourceEditorInterface(Sender) = FSourceEditor then
   begin
     ResetMiniMap;
@@ -278,10 +300,10 @@ begin
   CenterMiniMap;
 end;
 
-procedure TlazIdeMiniMap.AfterScroll(Sender: TObject; EventType: TSynScrollEvent; dx, dy: integer;
-  const rcScroll, rcClip: TRect);
+procedure TlazIdeMiniMap.EditorStateChanged(Sender: TObject; Changes: TSynStatusChanges );
 begin
-  CenterMiniMap;
+  if (Sender=FSourceSynEdit) then
+    CenterMiniMap;
 end;
 
 procedure TlazIdeMiniMap.CenterMiniMap;
