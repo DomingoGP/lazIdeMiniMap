@@ -544,10 +544,4 @@ object lazIdeMiniMap: TlazIdeMiniMap
       end
     end
   end
-  object Timer1: TTimer
-    Enabled = False
-    Interval = 50
-    OnTimer = Timer1Timer
-    Left = 264
-  end
 end

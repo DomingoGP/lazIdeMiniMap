@@ -40,7 +40,6 @@ type
     lbFontSize: TLabel;
     seFontSize: TSpinEdit;
     edMiniMap: TSynEdit;
-    Timer1: TTimer;
     procedure btnSaveClick(Sender: TObject);
     procedure edMiniMapSpecialLineMarkup(Sender: TObject; Line: integer;
       var Special: boolean; Markup: TSynSelectedColor);
@@ -51,7 +50,6 @@ type
     procedure btnColorColorChanged(Sender: TObject);
     procedure ActiveEditorChanged(Sender: TObject);
     procedure OnEditorDestroy(Sender: TObject);
-    procedure Timer1Timer(Sender: TObject);
   private
     { private declarations }
     FSourceEditor: TSourceEditorInterface;
@@ -59,7 +57,6 @@ type
     FColor:TColor;
     procedure EditorStateChanged(Sender: TObject; Changes: TSynStatusChanges);
     procedure CenterMiniMap;
-    procedure OnChangedEditorAsync(Data:PtrInt);
     procedure SetUpMiniMap(aOriginEditor: TCustomSynEdit);
     procedure ResetMiniMap;
     procedure LoadSettings;
@@ -88,7 +85,7 @@ resourcestring
   SMiniMapMenuCaption = 'MiniMap';
 
 const
-  FORM_NAME='lazIdeMiniMap1';
+  FORM_NAME='lazIdeMiniMap1';   //should be distinct of design time form.Name
 
 procedure ShowlazIdeMiniMap1(Sender: TObject);
 begin
@@ -251,29 +248,19 @@ begin
 end;
 
 procedure TlazIdeMiniMap.ActiveEditorChanged(Sender: TObject);
+var
+  wActiveEditor:TSourceEditorInterface;
 begin
   if TSourceEditorInterface(Sender) = FSourceEditor then
     Exit;
-  //solves problems with unfinished messages in synedit.
-  Application.QueueAsyncCall(@OnChangedEditorAsync,0);
-end;
-
-procedure TLazIdeMiniMap.OnChangedEditorAsync(Data:PtrInt);
-begin
-  if TSourceEditorInterface(SourceEditorManagerIntf.ActiveEditor) = FSourceEditor then
+  wActiveEditor:=TSourceEditorInterface(SourceEditorManagerIntf.ActiveEditor);
+  if wActiveEditor = FSourceEditor then
+    Exit;
+  // Change fired 3 times for one tab  Code,Form,Anchors???
+  if (wActiveEditor=nil) or (not(wActiveEditor.EditorControl is TSynEdit)) then
     Exit;
   ResetMiniMap;
-  Timer1.Enabled:=true;
-  //setup continues in Timer1Timer.
-end;
-
-procedure TlazIdeMiniMap.Timer1Timer(Sender: TObject);
-begin
-  Timer1.Enabled:=false;
-  FSourceSynEdit := nil;
-  FSourceEditor := TSourceEditorInterface(SourceEditorManagerIntf.ActiveEditor);
-  if FSourceEditor = nil then
-    Exit;
+  FSourceEditor := wActiveEditor;
   FSourceSynEdit := TCustomSynEdit(FSourceEditor.EditorControl);
   if FSourceSynEdit = nil then
   begin
